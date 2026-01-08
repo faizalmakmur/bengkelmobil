@@ -95,7 +95,7 @@
 
     <script>
         // 1. Load Tanggal Tersedia saat halaman dibuka
-        fetch('http://localhost:3000/api/schedules/available')
+        fetch('/api/schedules/available')
             .then(res => res.json())
             .then(data => {
                 const select = document.getElementById('date');
@@ -130,7 +130,7 @@
             };
 
             try {
-                const res = await fetch('http://localhost:3000/api/bookings', {
+                const res = await fetch('/api/bookings', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -149,4 +149,5 @@
         });
     </script>
 </body>
+
 </html>
