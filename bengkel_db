@@ -1,0 +1,29 @@
+CREATE DATABASE bengkel_db;
+USE bengkel_db;
+
+CREATE TABLE admins (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(50) NOT NULL
+);
+
+INSERT INTO admins (username, password) VALUES ('admin', '123');
+
+CREATE TABLE schedules (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    service_date DATE NOT NULL UNIQUE,
+    quota INT NOT NULL DEFAULT 0
+);
+
+CREATE TABLE bookings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    customer_name VARCHAR(100),
+    phone VARCHAR(20),
+    car_type VARCHAR(50),
+    plate_number VARCHAR(20),
+    complaint TEXT,
+    service_date DATE,
+    service_time TIME,
+    status ENUM('Menunggu Konfirmasi', 'Konfirmasi Batal', 'Konfirmasi Datang', 'Tidak Datang', 'Datang') DEFAULT 'Menunggu Konfirmasi',
+    FOREIGN KEY (service_date) REFERENCES schedules(service_date)
+);
