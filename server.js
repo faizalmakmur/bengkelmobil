@@ -9,16 +9,20 @@ app.use(bodyParser.json());
 
 // Koneksi Database
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',      
-    password: '',      
-    database: 'bengkel_db',
-    dateStrings: true
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 4000,
+    dateStrings: true, 
+    ssl: {
+        rejectUnauthorized: true 
+    }
 });
 
 db.connect(err => {
-    if (err) throw err;
-    console.log('Database connected!');
+    if (err) console.error('Koneksi Database Gagal:', err);
+    else console.log('Database Cloud Connected!');
 });
 
 // Cek apakah tanggal H+1
@@ -131,7 +135,6 @@ app.put('/api/bookings/:id/status', (req, res) => {
         db.query(updateSql, [newStatus, bookingId], (err) => {
             if (err) return res.status(500).json(err);
 
-            // LOGIKA PENGEMBALIAN KUOTA
             // Jika status berubah JADI "Konfirmasi Batal" DARI status lain (kecuali batal), kuota +1
             if (newStatus === 'Konfirmasi Batal' && oldStatus !== 'Konfirmasi Batal') {
                 db.query('UPDATE schedules SET quota = quota + 1 WHERE service_date = ?', [serviceDate]);
@@ -149,3 +152,20 @@ app.put('/api/bookings/:id/status', (req, res) => {
 app.listen(3000, () => {
     console.log('Server running on port 3000');
 });
+
+
+
+db.connect(err => {
+    if (err) console.error('Koneksi Database Gagal:', err);
+    else console.log('Database Cloud Connected!');
+});
+
+const port = process.env.PORT || 3000;
+
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`Server running on port ${port}`);
+    });
+}
+
+module.exports = app;
