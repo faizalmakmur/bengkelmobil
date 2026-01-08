@@ -62,7 +62,7 @@
                 date: document.getElementById('schedDate').value,
                 quota: document.getElementById('schedQuota').value
             };
-            await fetch('http://localhost:3000/api/schedules', {
+            await fetch('/api/schedules', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
@@ -72,7 +72,7 @@
 
         // Load Bookings
         function loadBookings() {
-            fetch('http://localhost:3000/api/bookings')
+            fetch('/api/bookings')
             .then(res => res.json())
             .then(data => {
                 const tbody = document.getElementById('bookingTable');
@@ -105,7 +105,7 @@
         async function updateStatus(id, newStatus) {
             if(!confirm(`Ubah status menjadi ${newStatus}?`)) return;
             
-            await fetch(`http://localhost:3000/api/bookings/${id}/status`, {
+            await fetch(`/api/bookings/${id}/status`, {
                 method: 'PUT',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ newStatus })
@@ -120,4 +120,5 @@
         loadBookings();
     </script>
 </body>
+
 </html>
