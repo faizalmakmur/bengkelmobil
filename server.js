@@ -7,16 +7,16 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Koneksi Database
+// --- KONEKSI DATABASE (Support Vercel/TiDB Cloud) ---
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT || 4000,
-    dateStrings: true, 
+    dateStrings: true, // Wajib agar tanggal tidak error
     ssl: {
-        rejectUnauthorized: true 
+        rejectUnauthorized: true // Wajib untuk TiDB Cloud
     }
 });
 
@@ -25,11 +25,11 @@ db.connect(err => {
     else console.log('Database Cloud Connected!');
 });
 
+// --- HELPER FUNCTION ---
 // Cek apakah tanggal H+1
 const isHPlusOne = (inputDate) => {
     const today = new Date();
     const target = new Date(inputDate);
-    // Reset jam agar perbandingan murni tanggal
     today.setHours(0,0,0,0);
     target.setHours(0,0,0,0);
     
@@ -38,8 +38,9 @@ const isHPlusOne = (inputDate) => {
     return diffDays >= 1;
 };
 
+// --- API ENDPOINTS ---
 
-// 1.  Login Dealer
+// 1. Login Dealer
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     const sql = 'SELECT * FROM admins WHERE username = ? AND password = ?';
@@ -53,7 +54,6 @@ app.post('/api/login', (req, res) => {
 // 2. DEALER: Atur Jadwal & Kuota
 app.post('/api/schedules', (req, res) => {
     const { date, quota } = req.body;
-    // Insert atau Update jika tanggal sudah ada
     const sql = `INSERT INTO schedules (service_date, quota) VALUES (?, ?) 
                  ON DUPLICATE KEY UPDATE quota = ?`;
     db.query(sql, [date, quota, quota], (err, result) => {
@@ -62,7 +62,7 @@ app.post('/api/schedules', (req, res) => {
     });
 });
 
-// 3. CUSTOMER: Ambil Tanggal yang Tersedia (H+1 dan Kuota > 0)
+// 3. CUSTOMER: Ambil Tanggal yang Tersedia
 app.get('/api/schedules/available', (req, res) => {
     const sql = 'SELECT * FROM schedules WHERE service_date > CURDATE() AND quota > 0';
     db.query(sql, (err, results) => {
@@ -75,12 +75,10 @@ app.get('/api/schedules/available', (req, res) => {
 app.post('/api/bookings', (req, res) => {
     const { name, phone, car_type, plate, complaint, date, time } = req.body;
 
-    // Validasi H+1
     if (!isHPlusOne(date)) {
         return res.status(400).json({ message: 'Pemesanan harus H+1' });
     }
 
-    // Cek Kuota & Kurangi Kuota (Transaction)
     db.beginTransaction(err => {
         if (err) return res.status(500).json(err);
 
@@ -118,12 +116,11 @@ app.get('/api/bookings', (req, res) => {
     });
 });
 
-// 6. DEALER: Update Status (Termasuk logika pengembalian kuota)
+// 6. DEALER: Update Status
 app.put('/api/bookings/:id/status', (req, res) => {
     const bookingId = req.params.id;
     const { newStatus } = req.body;
 
-    // Ambil data booking lama dulu untuk cek status sebelumnya
     db.query('SELECT * FROM bookings WHERE id = ?', [bookingId], (err, results) => {
         if (err || results.length === 0) return res.status(404).json({ message: 'Booking not found' });
         
@@ -135,11 +132,9 @@ app.put('/api/bookings/:id/status', (req, res) => {
         db.query(updateSql, [newStatus, bookingId], (err) => {
             if (err) return res.status(500).json(err);
 
-            // Jika status berubah JADI "Konfirmasi Batal" DARI status lain (kecuali batal), kuota +1
             if (newStatus === 'Konfirmasi Batal' && oldStatus !== 'Konfirmasi Batal') {
                 db.query('UPDATE schedules SET quota = quota + 1 WHERE service_date = ?', [serviceDate]);
             }
-            // Optional: Jika status diubah DARI "Konfirmasi Batal" KE status aktif (misal admin salah klik), kuota -1
             else if (oldStatus === 'Konfirmasi Batal' && newStatus !== 'Konfirmasi Batal') {
                 db.query('UPDATE schedules SET quota = quota - 1 WHERE service_date = ?', [serviceDate]);
             }
@@ -149,19 +144,21 @@ app.put('/api/bookings/:id/status', (req, res) => {
     });
 });
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+// 7. DEALER: Hapus Booking (PENTING: Ini tadi hilang di kode Anda)
+app.delete('/api/bookings/:id', (req, res) => {
+    const id = req.params.id;
+    const sql = 'DELETE FROM bookings WHERE id = ?';
+    db.query(sql, [id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Data berhasil dihapus permanen' });
+    });
 });
 
-
-
-db.connect(err => {
-    if (err) console.error('Koneksi Database Gagal:', err);
-    else console.log('Database Cloud Connected!');
-});
-
+// --- SERVER LISTEN (Setup Khusus Vercel) ---
 const port = process.env.PORT || 3000;
 
+// Hanya jalankan app.listen jika dijalankan di laptop (Local)
+// Vercel akan menangani servernya sendiri via module.exports
 if (require.main === module) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
