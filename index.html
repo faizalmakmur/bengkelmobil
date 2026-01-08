@@ -94,13 +94,28 @@
     </footer>
 
     <script>
-        // 1. Load Tanggal Tersedia saat halaman dibuka
-        fetch('/api/schedules/available')
-            .then(res => res.json())
+        const API_BASE = ''; // Kosongkan agar otomatis ikut domain Vercel
+
+        // 1. Load Tanggal (Versi Debugging)
+        fetch(`${API_BASE}/api/schedules/available`)
+            .then(async res => {
+                // Cek apakah server membalas dengan sukses (Status 200 OK)
+                if (!res.ok) {
+                    const text = await res.text(); // Baca pesan error ASLI dari server
+                    throw new Error(`Server Error (${res.status}): ${text}`);
+                }
+                return res.json();
+            })
             .then(data => {
                 const select = document.getElementById('date');
                 select.innerHTML = '<option value="">-- Pilih Tanggal Tersedia --</option>';
                 
+                // Cek jika data yang diterima bukan Array
+                if (!Array.isArray(data)) {
+                    console.log("Data aneh:", data); // Intip datanya di console
+                    throw new Error("Format data dari server salah. Cek Console.");
+                }
+
                 if (data.length === 0) {
                     select.innerHTML = '<option value="">Tidak ada jadwal tersedia</option>';
                 } else {
@@ -112,13 +127,15 @@
                 }
             })
             .catch(err => {
-                console.error(err);
-                alert("Gagal mengambil data jadwal. Pastikan server Backend menyala!");
+                console.error("DEBUG ERROR:", err);
+                // INI YANG AKAN MENAMPILKAN ERROR SEBENARNYA
+                alert("GAGAL LOAD JADWAL:\n" + err.message);
             });
 
         // 2. Handle Submit Form
         document.getElementById('bookingForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const data = {
                 name: document.getElementById('name').value,
                 phone: document.getElementById('phone').value,
@@ -130,24 +147,24 @@
             };
 
             try {
-                const res = await fetch('/api/bookings', {
+                const res = await fetch(`${API_BASE}/api/bookings`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
+                
                 const result = await res.json();
                 
                 if(res.ok) {
                     alert("Sukses! " + result.message);
-                    window.location.reload(); // Refresh halaman agar form bersih
+                    window.location.reload(); 
                 } else {
-                    alert("Gagal: " + result.message);
+                    alert("Gagal: " + (result.message || JSON.stringify(result)));
                 }
             } catch (err) {
-                alert("Terjadi kesalahan koneksi ke server.");
+                alert("Terjadi kesalahan koneksi:\n" + err.message);
             }
         });
     </script>
 </body>
-
 </html>
