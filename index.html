@@ -19,7 +19,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="#">Bengkel Mobil Maju</a>
+            <a class="navbar-brand fw-bold" href="#">Bengkel Mobil Makmur</a>
             <div class="d-flex">
                 <a href="login.html" class="btn btn-outline-primary btn-sm">Login Dealer</a>
             </div>
@@ -42,7 +42,7 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Nama Lengkap</label>
-                            <input type="text" id="name" class="form-control" placeholder="Contoh: Budi Santoso" required>
+                            <input type="text" id="name" class="form-control" placeholder="Contoh: Faizal Makmur" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">No. Handphone</label>
@@ -90,18 +90,17 @@
     </div>
 
     <footer class="text-center py-4 text-muted small">
-        &copy; 2026 Bengkel Mobil Maju. All rights reserved.
+        &copy; 2026 Bengkel Mobil Makmur. All rights reserved.
     </footer>
 
     <script>
-        const API_BASE = ''; // Kosongkan agar otomatis ikut domain Vercel
+        const API_BASE = ''; 
 
-        // 1. Load Tanggal (Versi Debugging)
         fetch(`${API_BASE}/api/schedules/available`)
             .then(async res => {
                 // Cek apakah server membalas dengan sukses (Status 200 OK)
                 if (!res.ok) {
-                    const text = await res.text(); // Baca pesan error ASLI dari server
+                    const text = await res.text(); 
                     throw new Error(`Server Error (${res.status}): ${text}`);
                 }
                 return res.json();
@@ -112,7 +111,7 @@
                 
                 // Cek jika data yang diterima bukan Array
                 if (!Array.isArray(data)) {
-                    console.log("Data aneh:", data); // Intip datanya di console
+                    console.log("Data aneh:", data); 
                     throw new Error("Format data dari server salah. Cek Console.");
                 }
 
@@ -128,7 +127,6 @@
             })
             .catch(err => {
                 console.error("DEBUG ERROR:", err);
-                // INI YANG AKAN MENAMPILKAN ERROR SEBENARNYA
                 alert("GAGAL LOAD JADWAL:\n" + err.message);
             });
 
@@ -168,3 +166,4 @@
     </script>
 </body>
 </html>
+
