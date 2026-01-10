@@ -7,16 +7,15 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// --- KONEKSI DATABASE (Support Vercel/TiDB Cloud) ---
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT || 4000,
-    dateStrings: true, // Wajib agar tanggal tidak error
+    dateStrings: true, 
     ssl: {
-        rejectUnauthorized: true // Wajib untuk TiDB Cloud
+        rejectUnauthorized: true 
     }
 });
 
@@ -38,7 +37,6 @@ const isHPlusOne = (inputDate) => {
     return diffDays >= 1;
 };
 
-// --- API ENDPOINTS ---
 
 // 1. Login Dealer
 app.post('/api/login', (req, res) => {
@@ -64,7 +62,7 @@ app.post('/api/schedules', (req, res) => {
 
 // 3. CUSTOMER: Ambil Tanggal yang Tersedia
 app.get('/api/schedules/available', (req, res) => {
-    const sql = 'SELECT * FROM schedules WHERE service_date > CURDATE() AND quota > 0';
+    const sql = 'SELECT * FROM schedules WHERE service_date >= CURDATE() AND quota > 0';
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
@@ -154,3 +152,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
