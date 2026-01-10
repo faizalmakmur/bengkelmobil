@@ -11,101 +11,169 @@
             window.location.href = 'login.html';
         }
     </script>
-
 </head>
-<body class="p-4">
-    <div class="container">
-       <div class="d-flex justify-content-between align-items-center">
+<body class="p-4 bg-light">
+    <div class="container bg-white p-4 shadow rounded">
+       <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Dealer Dashboard</h1>
             <button onclick="logout()" class="btn btn-danger btn-sm">Logout</button>
         </div>
         <hr>
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">Atur Jadwal & Kuota</div>
-            <div class="card-body">
-                <form id="scheduleForm" class="row g-3">
-                    <div class="col-auto">
-                        <input type="date" id="schedDate" class="form-control" required>
+
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">1. Input / Update Jadwal</div>
+                    <div class="card-body">
+                        <form id="scheduleForm">
+                            <div class="mb-3">
+                                <label>Pilih Tanggal</label>
+                                <input type="date" id="schedDate" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label>Jumlah Kuota</label>
+                                <input type="number" id="schedQuota" class="form-control" placeholder="Contoh: 10" required>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100">Simpan Jadwal</button>
+                        </form>
                     </div>
-                    <div class="col-auto">
-                        <input type="number" id="schedQuota" class="form-control" placeholder="Jumlah Kuota" required>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">Daftar Slot Jadwal Aktif</div>
+                    <div class="card-body p-0">
+                        <table class="table table-striped mb-0 text-center">
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Kuota</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleTableBody">
+                                </tbody>
+                        </table>
                     </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-success">Set Jadwal</button>
-                    </div>
-                </form>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <h3>2. Daftar Pesanan Servis</h3>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>Info Servis</th>
+                                <th>Pelanggan</th>
+                                <th>Status</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingTable">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-
-        <h3>Daftar Pemesanan Servis</h3>
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Tanggal</th>
-                    <th>Nama</th>
-                    <th>Mobil / Plat</th>
-                    <th>Keluhan</th>
-                    <th>Status Saat Ini</th>
-                    <th>Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="bookingTable">
-                </tbody>
-        </table>
     </div>
 
     <script>
-        // Set Jadwal
-document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const data = {
-        date: document.getElementById('schedDate').value,
-        quota: document.getElementById('schedQuota').value
-    };
-    
-    try {
-        const res = await fetch('/api/schedules', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
+        // --- 1. SET JADWAL (Dengan Auto Refresh) ---
+        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                date: document.getElementById('schedDate').value,
+                quota: document.getElementById('schedQuota').value
+            };
+            
+            try {
+                const res = await fetch('/api/schedules', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json(); 
+
+                if (!res.ok) {
+                    alert('GAGAL UPDATE: ' + (result.message || JSON.stringify(result)));
+                } else {
+                    alert('SUKSES: Jadwal berhasil masuk database!');
+                    // Reset form dan reload tabel jadwal
+                    document.getElementById('scheduleForm').reset();
+                    loadSchedules(); 
+                }
+            } catch (err) {
+                alert('ERROR KONEKSI: ' + err.message);
+            }
         });
 
-        const result = await res.json(); 
+        // --- [BARU] 2. LOAD DAFTAR JADWAL & TOMBOL HAPUS ---
+        function loadSchedules() {
+            fetch('/api/schedules/all')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('scheduleTableBody');
+                tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3">Belum ada jadwal</td></tr>';
+                    return;
+                }
 
-        if (!res.ok) {
-            // Jika Gagal (Error 400/500)
-            alert('GAGAL UPDATE: ' + (result.message || JSON.stringify(result)));
-        } else {
-            // Jika Benar-benar Sukses
-            alert('SUKSES: Jadwal berhasil masuk database!');
+                data.forEach(s => {
+                    const date = new Date(s.service_date).toISOString().split('T')[0];
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${date}</td>
+                            <td>${s.quota}</td>
+                            <td>
+                                <button onclick="deleteSchedule(${s.id})" class="btn btn-danger btn-sm">Hapus</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
         }
-    } catch (err) {
-        alert('ERROR KONEKSI: ' + err.message);
-    }
-});
 
-        // Load Bookings
+        // --- [BARU] 3. FUNGSI HAPUS JADWAL ---
+        async function deleteSchedule(id) {
+            if(!confirm('Apakah Anda yakin ingin MENGHAPUS jadwal tanggal ini?')) return;
+            
+            try {
+                await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+                alert('Jadwal berhasil dihapus.');
+                loadSchedules(); // Refresh tabel
+            } catch (err) {
+                alert('Gagal menghapus jadwal');
+            }
+        }
+
+        // --- 4. LOAD BOOKINGS ---
         function loadBookings() {
             fetch('/api/bookings')
             .then(res => res.json())
             .then(data => {
                 const tbody = document.getElementById('bookingTable');
                 tbody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Belum ada pesanan</td></tr>';
+                    return;
+                }
+
                 data.forEach(b => {
                     const date = new Date(b.service_date).toISOString().split('T')[0];
                     tbody.innerHTML += `
                         <tr>
-                            <td>${date} <br> ${b.service_time}</td>
-                            <td>${b.customer_name} <br> ${b.phone}</td>
-                            <td>${b.car_type} <br> ${b.plate_number}</td>
-                            <td>${b.complaint}</td>
+                            <td>${date} <br> <small>${b.service_time}</small></td>
+                            <td>${b.customer_name} <br> <small>${b.car_type}</small></td>
                             <td><span class="badge bg-secondary">${b.status}</span></td>
                             <td>
                                 <select onchange="updateStatus(${b.id}, this.value)" class="form-select form-select-sm">
-                                    <option value="" disabled selected>Ubah Status</option>
-                                    <option value="Menunggu Konfirmasi">Menunggu Konfirmasi</option>
-                                    <option value="Konfirmasi Datang">Konfirmasi Datang</option>
-                                    <option value="Konfirmasi Batal">Konfirmasi Batal</option>
+                                    <option value="" disabled selected>Ubah</option>
+                                    <option value="Konfirmasi Datang">Konfirmasi</option>
+                                    <option value="Konfirmasi Batal">Batal</option>
                                     <option value="Datang">Datang</option>
                                     <option value="Tidak Datang">Tidak Datang</option>
                                 </select>
@@ -124,16 +192,17 @@ document.getElementById('scheduleForm').addEventListener('submit', async (e) => 
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ newStatus })
             });
-            loadBookings(); // Refresh table
+            loadBookings(); 
         }
 
         function logout() {
             localStorage.removeItem('isDealerLoggedIn');
             window.location.href = 'index.html';
         }
+
+        // Jalankan saat pertama kali buka
+        loadSchedules();
         loadBookings();
     </script>
 </body>
-
 </html>
-
