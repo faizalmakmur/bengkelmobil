@@ -23,7 +23,7 @@
         <div class="row">
             <div class="col-md-5">
                 <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">1. Input / Update Jadwal</div>
+                    <div class="card-header bg-primary text-white">Input / Update Jadwal</div>
                     <div class="card-body">
                         <form id="scheduleForm">
                             <div class="mb-3">
@@ -58,7 +58,7 @@
             </div>
 
             <div class="col-md-7">
-                <h3>2. Daftar Pesanan Servis</h3>
+                <h3>Daftar Pesanan Servis</h3>
                 <div class="table-responsive">
                     <table class="table table-bordered table-striped">
                         <thead>
@@ -108,7 +108,7 @@
             }
         });
 
-        // --- [BARU] 2. LOAD DAFTAR JADWAL & TOMBOL HAPUS ---
+        // --- LOAD DAFTAR JADWAL & TOMBOL HAPUS ---
         function loadSchedules() {
             fetch('/api/schedules/all')
             .then(res => res.json())
@@ -136,7 +136,7 @@
             });
         }
 
-        // --- [BARU] 3. FUNGSI HAPUS JADWAL ---
+        // --- FUNGSI HAPUS JADWAL ---
         async function deleteSchedule(id) {
             if(!confirm('Apakah Anda yakin ingin MENGHAPUS jadwal tanggal ini?')) return;
             
@@ -200,9 +200,9 @@
             window.location.href = 'index.html';
         }
 
-        // Jalankan saat pertama kali buka
         loadSchedules();
         loadBookings();
     </script>
 </body>
 </html>
+
