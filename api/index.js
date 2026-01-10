@@ -7,6 +7,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// --- KONEKSI DATABASE ---
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -25,18 +26,17 @@ db.connect(err => {
 });
 
 // --- HELPER FUNCTION ---
-// Cek apakah tanggal H+1
 const isHPlusOne = (inputDate) => {
     const today = new Date();
     const target = new Date(inputDate);
     today.setHours(0,0,0,0);
     target.setHours(0,0,0,0);
-    
     const diffTime = target - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
     return diffDays >= 1;
 };
 
+// --- API ENDPOINTS ---
 
 // 1. Login Dealer
 app.post('/api/login', (req, res) => {
@@ -57,6 +57,24 @@ app.post('/api/schedules', (req, res) => {
     db.query(sql, [date, quota, quota], (err, result) => {
         if (err) return res.status(500).json(err);
         res.json({ message: 'Jadwal update berhasil' });
+    });
+});
+
+// --- [BARU] 2a. DEALER: Lihat SEMUA Jadwal ---
+app.get('/api/schedules/all', (req, res) => {
+    const sql = 'SELECT * FROM schedules ORDER BY service_date DESC';
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+// --- [BARU] 2b. DEALER: Hapus Jadwal ---
+app.delete('/api/schedules/:id', (req, res) => {
+    const id = req.params.id;
+    db.query('DELETE FROM schedules WHERE id = ?', [id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: 'Jadwal berhasil dihapus' });
     });
 });
 
@@ -142,7 +160,6 @@ app.put('/api/bookings/:id/status', (req, res) => {
     });
 });
 
-
 const port = process.env.PORT || 3000;
 
 if (require.main === module) {
@@ -152,4 +169,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
