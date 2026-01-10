@@ -7,23 +7,22 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// --- KONEKSI DATABASE ---
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     port: process.env.DB_PORT || 4000,
-    dateStrings: true, 
+    dateStrings: true,
     ssl: {
-        rejectUnauthorized: true 
-    }
+        rejectUnauthorized: true
+    },
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect(err => {
-    if (err) console.error('Koneksi Database Gagal:', err);
-    else console.log('Database Cloud Connected!');
-});
+console.log("Menggunakan Connection Pool...");
 
 // --- HELPER FUNCTION ---
 const isHPlusOne = (inputDate) => {
@@ -49,7 +48,7 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// 2. DEALER: Atur Jadwal & Kuota
+// 2. DEALER: Atur Jadwal & Kuota (Insert/Update)
 app.post('/api/schedules', (req, res) => {
     const { date, quota } = req.body;
     const sql = `INSERT INTO schedules (service_date, quota) VALUES (?, ?) 
@@ -60,7 +59,7 @@ app.post('/api/schedules', (req, res) => {
     });
 });
 
-// --- DEALER: Lihat SEMUA Jadwal ---
+//  DEALER: Lihat SEMUA Jadwal
 app.get('/api/schedules/all', (req, res) => {
     const sql = 'SELECT * FROM schedules ORDER BY service_date DESC';
     db.query(sql, (err, results) => {
@@ -69,7 +68,7 @@ app.get('/api/schedules/all', (req, res) => {
     });
 });
 
-// --- DEALER: Hapus Jadwal ---
+// DEALER: Hapus Jadwal
 app.delete('/api/schedules/:id', (req, res) => {
     const id = req.params.id;
     db.query('DELETE FROM schedules WHERE id = ?', [id], (err) => {
@@ -95,27 +94,53 @@ app.post('/api/bookings', (req, res) => {
         return res.status(400).json({ message: 'Pemesanan harus H+1' });
     }
 
-    db.beginTransaction(err => {
+    db.getConnection((err, connection) => {
         if (err) return res.status(500).json(err);
 
-        const checkQuotaSql = 'SELECT quota FROM schedules WHERE service_date = ? FOR UPDATE';
-        db.query(checkQuotaSql, [date], (err, results) => {
-            if (err || results.length === 0 || results[0].quota <= 0) {
-                return db.rollback(() => res.status(400).json({ message: 'Kuota habis atau tanggal tidak tersedia' }));
+        connection.beginTransaction(err => {
+            if (err) {
+                connection.release();
+                return res.status(500).json(err);
             }
 
-            const insertSql = `INSERT INTO bookings (customer_name, phone, car_type, plate_number, complaint, service_date, service_time) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?)`;
-            db.query(insertSql, [name, phone, car_type, plate, complaint, date, time], (err, result) => {
-                if (err) return db.rollback(() => res.status(500).json(err));
+            const checkQuotaSql = 'SELECT quota FROM schedules WHERE service_date = ? FOR UPDATE';
+            connection.query(checkQuotaSql, [date], (err, results) => {
+                if (err || results.length === 0 || results[0].quota <= 0) {
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(400).json({ message: 'Kuota habis atau tanggal tidak tersedia' });
+                    });
+                }
 
-                const updateQuotaSql = 'UPDATE schedules SET quota = quota - 1 WHERE service_date = ?';
-                db.query(updateQuotaSql, [date], (err) => {
-                    if (err) return db.rollback(() => res.status(500).json(err));
-                    
-                    db.commit(err => {
-                        if (err) return db.rollback(() => res.status(500).json(err));
-                        res.json({ message: 'Pemesanan berhasil!' });
+                const insertSql = `INSERT INTO bookings (customer_name, phone, car_type, plate_number, complaint, service_date, service_time) 
+                                   VALUES (?, ?, ?, ?, ?, ?, ?)`;
+                connection.query(insertSql, [name, phone, car_type, plate, complaint, date, time], (err, result) => {
+                    if (err) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json(err);
+                        });
+                    }
+
+                    const updateQuotaSql = 'UPDATE schedules SET quota = quota - 1 WHERE service_date = ?';
+                    connection.query(updateQuotaSql, [date], (err) => {
+                        if (err) {
+                            return connection.rollback(() => {
+                                connection.release();
+                                res.status(500).json(err);
+                            });
+                        }
+                        
+                        connection.commit(err => {
+                            if (err) {
+                                return connection.rollback(() => {
+                                    connection.release();
+                                    res.status(500).json(err);
+                                });
+                            }
+                            connection.release();
+                            res.json({ message: 'Pemesanan berhasil!' });
+                        });
                     });
                 });
             });
@@ -148,6 +173,7 @@ app.put('/api/bookings/:id/status', (req, res) => {
         db.query(updateSql, [newStatus, bookingId], (err) => {
             if (err) return res.status(500).json(err);
 
+            // kembalikan kuota jika Batal
             if (newStatus === 'Konfirmasi Batal' && oldStatus !== 'Konfirmasi Batal') {
                 db.query('UPDATE schedules SET quota = quota + 1 WHERE service_date = ?', [serviceDate]);
             }
@@ -169,4 +195,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
