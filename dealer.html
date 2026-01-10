@@ -56,19 +56,33 @@
 
     <script>
         // Set Jadwal
-        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const data = {
-                date: document.getElementById('schedDate').value,
-                quota: document.getElementById('schedQuota').value
-            };
-            await fetch('/api/schedules', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-            alert('Jadwal berhasil diupdate');
+document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        date: document.getElementById('schedDate').value,
+        quota: document.getElementById('schedQuota').value
+    };
+    
+    try {
+        const res = await fetch('/api/schedules', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
         });
+
+        const result = await res.json(); 
+
+        if (!res.ok) {
+            // Jika Gagal (Error 400/500)
+            alert('GAGAL UPDATE: ' + (result.message || JSON.stringify(result)));
+        } else {
+            // Jika Benar-benar Sukses
+            alert('SUKSES: Jadwal berhasil masuk database!');
+        }
+    } catch (err) {
+        alert('ERROR KONEKSI: ' + err.message);
+    }
+});
 
         // Load Bookings
         function loadBookings() {
@@ -122,3 +136,4 @@
 </body>
 
 </html>
+
