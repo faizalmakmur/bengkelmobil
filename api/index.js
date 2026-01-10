@@ -60,7 +60,7 @@ app.post('/api/schedules', (req, res) => {
     });
 });
 
-// --- [BARU] 2a. DEALER: Lihat SEMUA Jadwal ---
+// --- DEALER: Lihat SEMUA Jadwal ---
 app.get('/api/schedules/all', (req, res) => {
     const sql = 'SELECT * FROM schedules ORDER BY service_date DESC';
     db.query(sql, (err, results) => {
@@ -69,7 +69,7 @@ app.get('/api/schedules/all', (req, res) => {
     });
 });
 
-// --- [BARU] 2b. DEALER: Hapus Jadwal ---
+// --- DEALER: Hapus Jadwal ---
 app.delete('/api/schedules/:id', (req, res) => {
     const id = req.params.id;
     db.query('DELETE FROM schedules WHERE id = ?', [id], (err) => {
@@ -169,3 +169,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
